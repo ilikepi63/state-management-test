@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Vanilla State Management test</title>
+        <!-- RxJS -->
+        <script src="https://unpkg.com/rxjs@^7/dist/bundles/rxjs.umd.min.js"></script>
+        <!-- Handlebars -->
+        <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+        <!-- UUID -->
+        <script src="https://unpkg.com/uuid@latest/dist/umd/uuidv4.min.js"></script>
+
+    </head>
+
+    <body>
+        <p>
+            Hello!
+        </p>
+
+        <input onkeyup="updateName(this)"/> 
+
+        <observibel name="input-name">
+            {{name}}
+        </observibel>
+
+        <observibel name="input-name">
+            This is your name: {{name}}
+        </observibel>
+
+        <script>
+
+            let templates = {};
+
+            let nameSubject;
+
+            window.onload = () => {
+
+                nameSubject = new rxjs.BehaviorSubject({name:"a"});
+
+                const observibels = document.querySelectorAll("observibel");
+
+                observibels.forEach((obs) => { 
+
+                    // extract metadata 
+                    const {reference, template} = extractMetaFromObservibel(obs);
+
+                    if(!templates[reference]){
+                        templates[reference] = [];
+                    }
+
+                    const id = uuidv4();
+
+                    // save the template
+                    templates[reference].push( { id, template:Handlebars.compile(template) } );
+
+                    // attach a key
+                    const attr = document.createAttribute("key");
+                    attr.value = id;
+
+                    obs.attributes.setNamedItem(attr);
+                }); 
+
+                // attach an observable to a name
+                attach("input-name", nameSubject);
+            };
+
+            function updateName(e){
+                nameSubject.next({name: e.value});
+
+                setTimeout(() => this.focus(), 10);
+            }
+
+            function extractMetaFromObservibel(observibel){
+
+                const reference = observibel.attributes["name"].value;
+
+                const template = observibel.innerHTML;
+
+                return {
+                    reference, template
+                }
+
+            }
+
+            function attach(name, obs){
+
+                obs.subscribe((data) => {
+                    render(name, data);
+                });
+
+            }
+
+
+            function render(name, data){
+
+                const templates = getTemplatesFromName(name);
+
+                for(let i = 0; i < templates.length; i++){
+
+                    const template = templates[i];
+
+                    const el = document.querySelector(`observibel[name='${name}'][key='${template.id}']`);
+
+                    el.innerHTML = template.template(data);
+
+                }
+
+            }
+
+
+            function getTemplatesFromName(name){
+                return templates[name];
+            }
+
+        </script>
+    </body>
+</html>
